@@ -1,0 +1,158 @@
+
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEXO AI</title>
+<style>
+:root{--bg:#f2f4f8;--card:#fff;--ink:#121826;--mut:#5d6679;--line:#dde2ec;--ac:#3b4bdb;--acx:#fff;--hi:#ffc145}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0f1320;--card:#181d2e;--ink:#e8ecf6;--mut:#9aa4bd;--line:#2a3148;--ac:#7b88ff;--acx:#0f1320}}
+:root[data-theme=dark]{--bg:#0f1320;--card:#181d2e;--ink:#e8ecf6;--mut:#9aa4bd;--line:#2a3148;--ac:#7b88ff;--acx:#0f1320}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select,textarea{font:inherit;color:inherit}
+.app{display:grid;grid-template-columns:210px 1fr;height:100%}
+nav{background:var(--card);border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+.logo{font:700 22px Georgia,serif;letter-spacing:.5px;padding:4px 10px 12px}
+.logo i{font-style:normal;color:var(--ac)}
+nav a{padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--mut);white-space:nowrap}
+nav a:hover{background:var(--bg)}
+nav a.on{background:var(--ac);color:var(--acx)}
+main{overflow:auto;padding:22px;min-width:0}
+h1{font:700 26px Georgia,serif;margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.big{font:700 30px Georgia,serif}
+.btn{background:var(--ac);color:var(--acx);border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
+.btn.g{background:transparent;color:var(--ink);border:1px solid var(--line)}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+textarea{resize:vertical;min-height:140px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>input{flex:1;min-width:140px;width:auto}
+.msgs{height:calc(100vh - 230px);min-height:240px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.m{max-width:80%;padding:9px 13px;border-radius:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.m.u{align-self:flex-end;background:var(--ac);color:var(--acx)}
+.m.b{align-self:flex-start;background:var(--card);border:1px solid var(--line)}
+.t{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.t:last-child{border:0}
+.t.d span{text-decoration:line-through;color:var(--mut)}
+.t span{flex:1}
+.t input{width:auto}
+.bar{height:8px;background:var(--bg);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--hi)}
+.sw{display:inline-block;width:38px;height:38px;border-radius:8px;border:1px solid var(--line);margin-right:6px}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0}
+canvas{max-width:100%;border:1px solid var(--line);border-radius:8px}
+.small{font-size:13px;color:var(--mut)}
+.x{background:none;border:0;color:var(--mut);cursor:pointer}
+#login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9}
+#login .card{max-width:380px;width:100%}
+@media(max-width:720px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr}nav{flex-direction:row;border:0;border-bottom:1px solid var(--line);padding:8px}.logo{display:none}main{padding:14px}.msgs{height:calc(100vh - 270px)}}
+</style>
+</head>
+<body>
+<div id="login" hidden><div class="card">
+<div class="logo">NEX<i>O</i> AI</div>
+<p>Um só lugar para conversar, pesquisar, criar e organizar o teu trabalho. Tudo fica guardado neste dispositivo.</p>
+<p class="small">Como te chamas?</p>
+<div class="row"><input id="ln" placeholder="O teu nome" onkeydown="if(event.key==='Enter')enter()"><button class="btn" onclick="enter()">Entrar</button></div>
+</div></div>
+<div class="app"><nav id="nav"></nav><main id="main"></main></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S={user:'',theme:'',api:'',chat:[],mem:[],tasks:[],projects:[],doc:''};
+try{Object.assign(S,JSON.parse(localStorage.getItem('nexo')||'{}'))}catch(e){}
+const save=()=>{try{localStorage.setItem('nexo',JSON.stringify(S))}catch(e){}};
+if(S.theme)document.documentElement.dataset.theme=S.theme;
+const uid=()=>Math.random().toString(36).slice(2,9);
+
+const NAV=[['home','Workspace'],['chat','Chat'],['research','Research'],['vision','Vision'],['studio','Studio'],['docs','Documents'],['code','Code'],['agents','Agents'],['projects','Projects'],['tasks','Tasks'],['memory','Memory'],['settings','Settings']];
+let cur='home';
+function go(v){cur=v;$('#nav').innerHTML='<div class="logo">NEX<i>O</i> AI</div>'+NAV.map(n=>`<a class="${n[0]==v?'on':''}" onclick="go('${n[0]}')">${n[1]}</a>`).join('');$('#main').innerHTML=V[v]();if(I[v])I[v]();$('#main').scrollTop=0}
+function enter(){const n=$('#ln').value.trim();if(!n)return $('#ln').focus();S.user=n;save();$('#login').hidden=true;go('home')}
+
+/* ---------- Chat engine (local, com ligação opcional a um backend) ---------- */
+async function answer(t){
+  if(S.api){try{const r=await fetch(S.api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:t,history:S.chat.slice(-12),memory:S.mem})});const j=await r.json();return j.reply||JSON.stringify(j)}catch(e){return 'Não consegui falar com o teu backend ('+e.message+'). Confirma o endereço nas definições.'}}
+  const l=t.toLowerCase();let m;
+  if(/^[\d\s+\-*/().,%]+$/.test(t)&&/\d/.test(t)){try{return '= '+Function('return ('+t.replace(/,/g,'.')+')')()}catch(e){}}
+  if((m=l.match(/(?:lembra-te que|guarda que|guarda)\s+(.+)/))){S.mem.push({id:uid(),t:t.slice(t.toLowerCase().indexOf(m[1]))});save();return 'Fica guardado: '+m[1]}
+  if((m=l.match(/cria(?:r)? (?:uma )?tarefa[: ]+(.+)/))){S.tasks.push({id:uid(),t:t.slice(t.toLowerCase().indexOf(m[1])),done:0,p:''});save();return 'Tarefa criada: '+m[1]}
+  if(/que horas|hora/.test(l))return 'São '+new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})+'.';
+  if(/que dia|data de hoje|hoje/.test(l))return 'Hoje é '+new Date().toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'.';
+  if(/o que sabes|memória|memoria/.test(l))return S.mem.length?'Tenho isto guardado:\n- '+S.mem.map(x=>x.t).join('\n- '):'Ainda não guardaste nada. Diz-me "guarda que..." e eu fico com isso.';
+  if(/^(olá|ola|oi|bom dia|boa tarde|boa noite)/.test(l))return 'Olá, '+S.user+'! Em que posso ajudar?';
+  const hit=S.mem.find(x=>x.t.toLowerCase().split(/\W+/).some(w=>w.length>4&&l.includes(w)));
+  return 'Neste momento respondo só a coisas simples: contas, hora, data, tarefas e memória.'+(hit?'\nPode ser relevante: "'+hit.t+'".':'')+'\n\nPara conversas a sério, liga um backend com um modelo de IA em Settings. A chave da API fica sempre no servidor.'}
+async function send(){const i=$('#ci');const t=i.value.trim();if(!t)return;i.value='';S.chat.push({r:'u',t});drawChat();const a=await answer(t);S.chat.push({r:'b',t:a});save();drawChat()}
+function drawChat(){const b=$('#msgs');if(!b)return;b.innerHTML=S.chat.length?S.chat.map(m=>`<div class="m ${m.r}">${esc(m.t)}</div>`).join(''):'<p class="small">Escreve qualquer coisa para começar. Experimenta: 12*(3+4), "guarda que gosto de café" ou "cria tarefa rever o plano".</p>';b.scrollTop=b.scrollHeight}
+
+/* ---------- Views ---------- */
+const prog=p=>{const ts=S.tasks.filter(t=>t.p==p.id);return ts.length?Math.round(ts.filter(t=>t.done).length/ts.length*100):0};
+const V={
+home:()=>{const o=S.tasks.filter(t=>!t.done).length;return `<h1>Olá, ${esc(S.user)}</h1><p class="sub">O teu espaço de trabalho.</p>
+<div class="grid"><div class="card"><div class="big">${o}</div>tarefas em aberto</div><div class="card"><div class="big">${S.projects.length}</div>projetos</div><div class="card"><div class="big">${S.mem.length}</div>coisas na memória</div><div class="card"><div class="big">${S.chat.length}</div>mensagens no chat</div></div>
+<div class="card"><b>Por onde começar</b><p class="small">Chat para perguntas rápidas, Research para procurar na Wikipédia, Studio para montar um cartaz, Agents para transformar um objetivo em tarefas.</p><div class="row"><button class="btn" onclick="go('chat')">Abrir o chat</button><button class="btn g" onclick="go('agents')">Planear com um agente</button></div></div>`},
+chat:()=>`<h1>Chat</h1><p class="sub">${S.api?'Ligado ao teu backend.':'Modo local. Liga um modelo em Settings.'}</p><div class="msgs" id="msgs"></div><div class="row"><input id="ci" placeholder="Escreve aqui" onkeydown="if(event.key==='Enter')send()"><button class="btn" onclick="send()">Enviar</button><button class="btn g" onclick="S.chat=[];save();drawChat()">Limpar</button></div>`,
+research:()=>`<h1>Research</h1><p class="sub">Pesquisa na Wikipédia em português.</p><div class="row"><input id="rq" placeholder="O que queres saber?" onkeydown="if(event.key==='Enter')research()"><button class="btn" onclick="research()">Pesquisar</button></div><div id="rr" style="margin-top:14px"></div>`,
+vision:()=>`<h1>Vision</h1><p class="sub">Escolhe uma imagem e vê o que dá para tirar dela, sem sair do telemóvel.</p><div class="card"><input type="file" id="vf" accept="image/*" onchange="vision(this.files[0])"><div id="vr" style="margin-top:12px"></div></div>`,
+studio:()=>`<h1>Studio</h1><p class="sub">Monta um cartaz e descarrega em PNG.</p><div class="card"><div class="row"><input id="s1" value="O teu título" oninput="poster()"><input id="s2" value="Uma linha de apoio" oninput="poster()"></div><div class="row" style="margin-top:8px">Fundo <input type="color" id="sb" value="#3b4bdb" oninput="poster()" style="width:50px;padding:2px"> Texto <input type="color" id="st" value="#ffffff" oninput="poster()" style="width:50px;padding:2px"> Forma <input type="color" id="sf" value="#ffc145" oninput="poster()" style="width:50px;padding:2px"> <select id="sl" onchange="poster()" style="width:auto"><option value="0">Círculo</option><option value="1">Faixa</option><option value="2">Sem forma</option></select><button class="btn" onclick="dl()">Descarregar PNG</button></div></div><canvas id="cv" width="600" height="400"></canvas>`,
+docs:()=>`<h1>Documents</h1><p class="sub">Escreve, resume e exporta.</p><div class="card"><textarea id="dt" oninput="S.doc=this.value;save();dst()">${esc(S.doc)}</textarea><div class="row" style="margin-top:8px"><span class="small" id="ds"></span><button class="btn g" onclick="summ()">Resumir</button><button class="btn g" onclick="down('txt')">Exportar .txt</button><button class="btn g" onclick="down('html')">Exportar .html</button><input type="file" accept=".txt,.md" onchange="openDoc(this.files[0])" style="width:auto"></div><pre id="dr" hidden></pre></div>`,
+code:()=>`<h1>Code</h1><p class="sub">Escreve JavaScript e corre. O console.log aparece em baixo.</p><div class="card"><textarea id="cc" spellcheck="false">const nums=[3,8,5];\nconsole.log(nums.map(n=>n*2));</textarea><div class="row" style="margin-top:8px"><button class="btn" onclick="runCode()">Correr</button></div><pre id="co">A saída aparece aqui.</pre></div>`,
+agents:()=>`<h1>Agents</h1><p class="sub">Dá um objetivo a um agente e ele parte-o em passos.</p><div class="card"><div class="row"><select id="ag" style="width:auto">${Object.keys(AG).map(k=>`<option>${k}</option>`).join('')}</select><input id="ao" placeholder="Qual é o objetivo?"></div><label class="small"><input type="checkbox" id="ac" checked style="width:auto"> Guardar os passos como tarefas</label><div class="row" style="margin-top:8px"><button class="btn" onclick="runAgent()">Executar</button></div></div><div id="ar"></div><p class="small">O plano é montado por regras locais. Com um modelo ligado, cada agente poderá raciocinar a sério.</p>`,
+projects:()=>`<h1>Projects</h1><p class="sub">Cada projeto mostra quanto já foi feito.</p><div class="row"><input id="pn" placeholder="Nome do projeto" onkeydown="if(event.key==='Enter')addProj()"><button class="btn" onclick="addProj()">Criar</button></div><div style="margin-top:14px">${S.projects.map(p=>`<div class="card"><div class="row"><b style="flex:1">${esc(p.n)}</b><span class="small">${prog(p)}%</span><button class="x" onclick="delProj('${p.id}')">Apagar</button></div><div class="bar"><i style="width:${prog(p)}%"></i></div><p class="small">${S.tasks.filter(t=>t.p==p.id).length} tarefas</p></div>`).join('')||'<p class="small">Ainda sem projetos. Cria o primeiro acima.</p>'}</div>`,
+tasks:()=>`<h1>Tasks</h1><p class="sub">Tudo o que há para fazer.</p><div class="card"><div class="row"><input id="tn" placeholder="Nova tarefa" onkeydown="if(event.key==='Enter')addTask()"><select id="tp" style="width:auto"><option value="">Sem projeto</option>${S.projects.map(p=>`<option value="${p.id}">${esc(p.n)}</option>`).join('')}</select><input type="date" id="td" style="width:auto;flex:none"><button class="btn" onclick="addTask()">Adicionar</button></div></div><div class="card">${S.tasks.map(t=>`<div class="t ${t.done?'d':''}"><input type="checkbox" ${t.done?'checked':''} onchange="tog('${t.id}')"><span>${esc(t.t)}${t.p?' <small class="small">· '+esc((S.projects.find(p=>p.id==t.p)||{}).n||'')+'</small>':''}${t.d?' <small class="small">até '+t.d+'</small>':''}</span><button class="x" onclick="delTask('${t.id}')">×</button></div>`).join('')||'<p class="small">Nada por fazer. Bom sinal.</p>'}</div>`,
+memory:()=>`<h1>Memory</h1><p class="sub">O que o NEXO sabe sobre ti. Tu decides o que fica.</p><div class="row"><input id="mn" placeholder="Algo que queres que fique guardado" onkeydown="if(event.key==='Enter')addMem()"><button class="btn" onclick="addMem()">Guardar</button></div><div class="card" style="margin-top:14px">${S.mem.map(m=>`<div class="t"><span>${esc(m.t)}</span><button class="x" onclick="delMem('${m.id}')">×</button></div>`).join('')||'<p class="small">Vazio por agora.</p>'}</div>`,
+settings:()=>`<h1>Settings</h1><p class="sub">Ajustes da conta e da ligação ao modelo.</p><div class="card"><p class="small">Nome</p><input id="un" value="${esc(S.user)}" onchange="S.user=this.value;save()"><p class="small">Tema</p><select onchange="theme(this.value)"><option value="">Automático</option><option value="light" ${S.theme=='light'?'selected':''}>Claro</option><option value="dark" ${S.theme=='dark'?'selected':''}>Escuro</option></select></div><div class="card"><p class="small">Endereço do backend (recebe POST com {message, history, memory} e devolve {reply})</p><input id="ap" placeholder="https://o-teu-servidor.com/api/chat" value="${esc(S.api)}" onchange="S.api=this.value.trim();save()"><p class="small">Nunca coloques a chave da API neste ficheiro. Ela fica no servidor.</p></div><div class="card"><button class="btn g" onclick="if(confirm('Apagar todos os dados deste dispositivo?')){localStorage.removeItem('nexo');location.reload()}">Apagar todos os dados</button></div>`
+};
+const I={chat:drawChat,studio:poster,docs:dst};
+
+/* ---------- Funções dos módulos ---------- */
+async function research(){const q=$('#rq').value.trim();if(!q)return;const r=$('#rr');r.innerHTML='<p class="small">A procurar...</p>';
+  try{const j=await(await fetch('https://pt.wikipedia.org/w/api.php?origin=*&action=query&list=search&format=json&srlimit=6&srsearch='+encodeURIComponent(q))).json();const a=j.query.search;
+  r.innerHTML=a.length?a.map(x=>`<div class="card"><b>${esc(x.title)}</b><p>${x.snippet.replace(/<[^>]+>/g,'')}...</p><a href="https://pt.wikipedia.org/wiki/${encodeURIComponent(x.title.replace(/ /g,'_'))}" target="_blank" rel="noopener">Ler no site</a></div>`).join(''):'<p>Não encontrei nada. Tenta outras palavras.</p>'}
+  catch(e){r.innerHTML='<p>A pesquisa precisa de internet e falhou. Tenta outra vez mais tarde.</p>'}}
+function vision(f){if(!f)return;const r=$('#vr'),u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=48;const x=c.getContext('2d');x.drawImage(im,0,0,48,48);const d=x.getImageData(0,0,48,48).data,k={};let br=0;
+  for(let i=0;i<d.length;i+=4){br+=(d[i]+d[i+1]+d[i+2])/3;const q=[d[i],d[i+1],d[i+2]].map(v=>Math.min(255,Math.round(v/48)*48)).join(',');k[q]=(k[q]||0)+1}
+  const top=Object.entries(k).sort((a,b)=>b[1]-a[1]).slice(0,5);br=br/(d.length/4);
+  r.innerHTML=`<img src="${u}" style="max-width:100%;max-height:260px;border-radius:8px"><p>${im.naturalWidth} × ${im.naturalHeight} px · ${(f.size/1024).toFixed(0)} KB · ${im.naturalWidth>im.naturalHeight?'horizontal':im.naturalWidth<im.naturalHeight?'vertical':'quadrada'} · ${br>140?'clara':br>80?'equilibrada':'escura'}</p><div>${top.map(t=>`<span class="sw" style="background:rgb(${t[0]})" title="rgb(${t[0]})"></span>`).join('')}</div><p class="small">Esta análise é feita no dispositivo. Para descrever o conteúdo da imagem é preciso um modelo com visão ligado ao backend.</p>`};im.src=u}
+function poster(){const c=$('#cv');if(!c)return;const x=c.getContext('2d'),W=600,H=400;x.fillStyle=$('#sb').value;x.fillRect(0,0,W,H);x.fillStyle=$('#sf').value;const s=$('#sl').value;
+  if(s==0){x.beginPath();x.arc(480,110,90,0,7);x.fill()}else if(s==1)x.fillRect(0,300,W,26);
+  x.fillStyle=$('#st').value;x.textBaseline='top';x.font='700 54px Georgia,serif';wrap(x,$('#s1').value,40,120,520,60);x.font='24px system-ui,sans-serif';wrap(x,$('#s2').value,40,300-(s==1?0:0)+30,520,30)}
+function wrap(x,t,px,py,mw,lh){let l='';for(const w of t.split(' ')){const n=l?l+' '+w:w;if(x.measureText(n).width>mw&&l){x.fillText(l,px,py);py+=lh;l=w}else l=n}x.fillText(l,px,py)}
+function dl(){const a=document.createElement('a');a.download='cartaz-nexo.png';a.href=$('#cv').toDataURL('image/png');a.click()}
+function dst(){const t=$('#dt');if(!t)return;const w=t.value.trim().split(/\s+/).filter(Boolean).length;$('#ds').textContent=w+' palavras · '+t.value.length+' caracteres'}
+function summ(){const t=S.doc.trim(),r=$('#dr');if(t.length<80){r.hidden=false;r.textContent='O texto é curto demais para resumir.';return}
+  const ss=t.match(/[^.!?\n]+[.!?]*/g).map(s=>s.trim()).filter(s=>s.length>20),f={};t.toLowerCase().split(/\W+/).filter(w=>w.length>4).forEach(w=>f[w]=(f[w]||0)+1);
+  const sc=ss.map((s,i)=>[i,s.toLowerCase().split(/\W+/).reduce((a,w)=>a+(f[w]||0),0)/Math.sqrt(s.length)]).sort((a,b)=>b[1]-a[1]).slice(0,3).map(a=>a[0]).sort((a,b)=>a-b);
+  r.hidden=false;r.textContent=sc.map(i=>ss[i]).join(' ')}
+function down(k){const b=new Blob([k=='txt'?S.doc:'<!DOCTYPE html><meta charset="utf-8"><title>Documento</title><body style="font:16px/1.6 Georgia,serif;max-width:680px;margin:30px auto">'+esc(S.doc).replace(/\n/g,'<br>')],{type:k=='txt'?'text/plain':'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='documento.'+k;a.click()}
+function openDoc(f){if(!f)return;f.text().then(t=>{S.doc=t;save();go('docs')})}
+function runCode(){const o=[],fc={log:(...a)=>o.push(a.map(v=>typeof v=='object'?JSON.stringify(v):String(v)).join(' '))};try{new Function('console',$('#cc').value)(fc);$('#co').textContent=o.join('\n')||'Correu sem erros e sem saída.'}catch(e){$('#co').textContent='Erro: '+e.message}}
+const AG={'Research Agent':['Definir a pergunta central sobre','Reunir fontes fiáveis sobre','Comparar o que as fontes dizem sobre','Escrever as conclusões sobre'],
+'Developer Agent':['Desenhar a estrutura de','Escrever a primeira versão de','Testar e corrigir erros em','Documentar e entregar'],
+'Designer Agent':['Escolher cores e tipo de letra para','Esboçar o layout de','Produzir a versão final de','Exportar e rever'],
+'Writer Agent':['Fazer o esquema de','Escrever o rascunho de','Rever o tom e a clareza de','Fechar a versão final de'],
+'Analyst Agent':['Recolher os dados de','Limpar e organizar os dados de','Procurar padrões em','Resumir os achados de'],
+'Project Agent':['Definir o âmbito de','Dividir em marcos','Atribuir prazos a','Marcar uma revisão de'],
+'Assistant Agent':['Perceber o que é preciso em','Fazer uma lista do que falta em','Tratar do mais urgente em','Confirmar que ficou resolvido']};
+function runAgent(){const o=$('#ao').value.trim();if(!o)return $('#ao').focus();const a=$('#ag').value,st=AG[a].map(s=>s+' '+o),r=$('#ar');
+  r.innerHTML='<div class="card" id="al"></div>';let i=0;const tick=()=>{if(i<st.length){$('#al').innerHTML+=`<div class="t"><input type="checkbox" checked disabled><span>${esc(st[i])}</span></div>`;i++;setTimeout(tick,600)}else{
+  if($('#ac').checked){const p={id:uid(),n:o};S.projects.push(p);st.forEach(s=>S.tasks.push({id:uid(),t:s,done:0,p:p.id}));save();$('#al').innerHTML+='<p class="small">Criei o projeto "'+esc(o)+'" com estes passos.</p>'}}};tick()}
+function addProj(){const v=$('#pn').value.trim();if(!v)return;S.projects.push({id:uid(),n:v});save();go('projects')}
+function delProj(id){S.projects=S.projects.filter(p=>p.id!=id);S.tasks=S.tasks.filter(t=>t.p!=id);save();go('projects')}
+function addTask(){const v=$('#tn').value.trim();if(!v)return;S.tasks.push({id:uid(),t:v,done:0,p:$('#tp').value,d:$('#td').value});save();go('tasks')}
+function tog(id){const t=S.tasks.find(x=>x.id==id);t.done=t.done?0:1;save();go('tasks')}
+function delTask(id){S.tasks=S.tasks.filter(t=>t.id!=id);save();go('tasks')}
+function addMem(){const v=$('#mn').value.trim();if(!v)return;S.mem.push({id:uid(),t:v});save();go('memory')}
+function delMem(id){S.mem=S.mem.filter(m=>m.id!=id);save();go('memory')}
+function theme(v){S.theme=v;save();v?document.documentElement.dataset.theme=v:delete document.documentElement.dataset.theme}
+
+if(S.user)go('home');else{$('#login').hidden=false;go('home')}
+</script>
+</body>
+</html>
